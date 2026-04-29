@@ -1,0 +1,13 @@
+# Kibana configuration
+server.host: "0.0.0.0"
+server.name: "fhir-kibana"
+
+# Elasticsearch connection (no authentication for local dev)
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# Disable telemetry for local dev
+telemetry.optIn: false
+telemetry.enabled: false
+
+# Logging
+logging.root.level: warn

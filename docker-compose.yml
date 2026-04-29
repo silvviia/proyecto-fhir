@@ -1,0 +1,158 @@
+##############################################################################
+# Docker Compose – FHIR-UI + ELK Stack
+#
+# Services:
+#   nginx          Angular SPA served via Nginx (port 4200)
+#   elasticsearch  Log storage            (port 9200)
+#   kibana         Log visualisation      (port 5601)
+#   logstash       Log processing         (ports 5044 beats / 5000 HTTP)
+#   filebeat       Log shipper (no port – connects to logstash:5044)
+#
+# Prerequisites (external, started separately):
+#   HAPI FHIR server  – http://localhost:8080
+#   Keycloak          – http://localhost:8081
+#
+# Usage:
+#   docker compose up -d          # start all services
+#   docker compose down -v        # stop and remove volumes
+##############################################################################
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Angular app served by Nginx (also acts as reverse proxy for /fhir)
+  # ---------------------------------------------------------------------------
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fhir-nginx
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    volumes:
+      - ./infra/elk/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-logs:/var/log/nginx
+    labels:
+      co.elastic.logs/enabled: "true"
+      co.elastic.logs/module: nginx
+      co.elastic.logs/fileset.stdout: access
+      co.elastic.logs/fileset.stderr: error
+    networks:
+      - elk-net
+    depends_on:
+      logstash:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Elasticsearch – single-node, security disabled for local dev
+  # ---------------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: fhir-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./infra/elk/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - elk-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Kibana – log visualisation
+  # ---------------------------------------------------------------------------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: fhir-kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    volumes:
+      - ./infra/elk/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - elk-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:5601/api/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  # ---------------------------------------------------------------------------
+  # Logstash – log pipeline
+  #   Port 5044: Beats protocol (Filebeat)
+  #   Port 5000: HTTP (Angular LoggerService JSON POSTs)
+  # ---------------------------------------------------------------------------
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    container_name: fhir-logstash
+    restart: unless-stopped
+    ports:
+      - "5044:5044"
+      - "5000:5000"
+    volumes:
+      - ./infra/elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./infra/elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    environment:
+      - LS_JAVA_OPTS=-Xms256m -Xmx256m
+    networks:
+      - elk-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9600 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Filebeat – reads Docker container logs and Nginx access logs
+  # ---------------------------------------------------------------------------
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.4
+    container_name: fhir-filebeat
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./infra/elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - nginx-logs:/var/log/nginx:ro
+    networks:
+      - elk-net
+    depends_on:
+      logstash:
+        condition: service_healthy
+
+# ---------------------------------------------------------------------------
+# Named volumes
+# ---------------------------------------------------------------------------
+volumes:
+  elasticsearch-data:
+    driver: local
+  nginx-logs:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+networks:
+  elk-net:
+    driver: bridge

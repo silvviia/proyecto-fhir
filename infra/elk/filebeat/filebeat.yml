@@ -1,0 +1,59 @@
+##########################################
+# Filebeat configuration
+# Collects Docker container logs and
+# Nginx access logs, ships to Logstash.
+##########################################
+
+filebeat.inputs:
+  # Nginx access log from the named volume mounted at /var/log/nginx
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+    fields:
+      log_type: nginx
+    fields_under_root: true
+    tags: ["nginx", "access"]
+
+  # Nginx error log
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/error.log
+    fields:
+      log_type: nginx_error
+    fields_under_root: true
+    tags: ["nginx", "error"]
+
+# Docker container log autodiscovery
+# Picks up stdout/stderr from all running containers
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - condition:
+            contains:
+              docker.container.name: "fhir"
+          config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              processors:
+                - add_docker_metadata:
+                    host: "unix:///var/run/docker.sock"
+                - decode_json_fields:
+                    fields: ["message"]
+                    target: ""
+                    overwrite_keys: true
+
+processors:
+  - add_host_metadata: ~
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: warning
+logging.to_files: false
