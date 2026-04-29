@@ -1,0 +1,210 @@
+<div class="hospital-page">
+  <!-- Header -->
+  <section class="card page-header">
+    <div>
+      <p class="eyebrow">Módulo clínico</p>
+      <h2>Pacientes</h2>
+      <p class="muted">Registro y gestión de pacientes (FHIR R4)</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" (click)="loadPatients()" [disabled]="loading || syncing">
+        {{ loading ? 'Actualizando...' : (syncing ? 'Sincronizando...' : 'Actualizar listado') }}
+      </button>
+    </div>
+  </section>
+
+  <!-- Form crear -->
+  <section class="card">
+    <h3>Nuevo paciente</h3>
+
+    <div class="grid grid-4">
+      <label>
+        Nombres
+        <input [(ngModel)]="formGiven" placeholder="Ej: Juan Carlos" />
+      </label>
+
+      <label>
+        Apellidos
+        <input [(ngModel)]="formFamily" placeholder="Ej: Pérez Gómez" />
+      </label>
+
+      <label>
+        Género
+        <select [(ngModel)]="formGender">
+          <option value="">Seleccione</option>
+          <option value="male">Masculino</option>
+          <option value="female">Femenino</option>
+          <option value="other">Otro</option>
+          <option value="unknown">No especifica</option>
+        </select>
+      </label>
+
+      <label>
+        Fecha de nacimiento
+        <input type="date" [(ngModel)]="formBirthDate" />
+      </label>
+      
+      <label class="inline-check">
+        <input type="checkbox" [(ngModel)]="showInactive" (ngModelChange)="goToPage(1)" />
+        <span>Mostrar inactivos</span>
+      </label>
+
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" (click)="createPatient()" [disabled]="saving">
+        {{ saving ? 'Guardando...' : 'Registrar paciente' }}
+      </button>
+      <button class="btn" (click)="resetCreateForm()" [disabled]="saving">Limpiar</button>
+    </div>
+
+    <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+    <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+  </section>
+
+  <!-- Tabla -->
+  <section class="card">
+    <div class="table-topbar">
+      <h3>Listado de pacientes</h3>
+
+      <div class="table-filters">
+        <input
+          class="search-input"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="goToPage(1)"
+          placeholder="Buscar por ID o nombre..."
+        />
+
+        <select [(ngModel)]="genderFilter" (ngModelChange)="goToPage(1)">
+          <option value="">Todos los géneros</option>
+          <option value="male">Masculino</option>
+          <option value="female">Femenino</option>
+          <option value="other">Otro</option>
+          <option value="unknown">No especifica</option>
+        </select>
+
+        <select [(ngModel)]="pageSize" (ngModelChange)="goToPage(1)">
+          <option [ngValue]="5">5 por página</option>
+          <option [ngValue]="8">8 por página</option>
+          <option [ngValue]="10">10 por página</option>
+          <option [ngValue]="20">20 por página</option>
+        </select>
+
+        <!-- Mostrar/ocultar inactivos -->
+        <label class="inline-check">
+          <input type="checkbox" [(ngModel)]="showInactive" (ngModelChange)="goToPage(1)" />
+          Mostrar inactivos
+        </label>
+      </div>
+    </div>
+
+    <div class="table-wrap" *ngIf="pagedPatients().length > 0; else emptyState">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre completo</th>
+            <th>Género</th>
+            <th>Nacimiento</th>
+            <th>Estado</th>
+            <th style="min-width: 320px;">Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let p of pagedPatients()">
+            <td><code>{{ p.id || '-' }}</code></td>
+            <td>{{ fullName(p) }}</td>
+            <td>{{ genderLabel(p.gender) }}</td>
+            <td>{{ p.birthDate || '-' }}</td>
+            <td>
+              <span class="badge" [ngClass]="p.active !== false ? 'badge-success' : 'badge-warning'">
+                {{ p.active !== false ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td class="actions">
+              <a class="btn" [routerLink]="['/patients', p.id]">Detalle</a>
+              <button class="btn" (click)="startEdit(p)">Editar</button>
+
+              <!-- Si está activo: borrar (DELETE o baja lógica) -->
+              <button class="btn btn-danger" *ngIf="p.active !== false" (click)="removePatient(p)">
+                Borrar
+              </button>
+
+              <!-- Si está inactivo: reactivar -->
+              <button class="btn btn-primary" *ngIf="p.active === false" (click)="reactivatePatient(p)">
+                Reactivar
+              </button>
+            </td>
+          </tr>
+
+          <!-- Fila edición inline -->
+          <tr *ngIf="editingId" class="edit-row">
+            <td colspan="6">
+              <div class="edit-box">
+                <h4>Editar paciente</h4>
+
+                <div class="grid grid-4">
+                  <label>
+                    Nombres
+                    <input [(ngModel)]="editGiven" />
+                  </label>
+
+                  <label>
+                    Apellidos
+                    <input [(ngModel)]="editFamily" />
+                  </label>
+
+                  <label>
+                    Género
+                    <select [(ngModel)]="editGender">
+                      <option value="">Seleccione</option>
+                      <option value="male">Masculino</option>
+                      <option value="female">Femenino</option>
+                      <option value="other">Otro</option>
+                      <option value="unknown">No especifica</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Fecha de nacimiento
+                    <input type="date" [(ngModel)]="editBirthDate" />
+                  </label>
+                </div>
+
+                <div class="form-actions">
+                  <button class="btn btn-primary" (click)="saveEdit()" [disabled]="saving">
+                    {{ saving ? 'Guardando...' : 'Guardar cambios' }}
+                  </button>
+                  <button class="btn" (click)="cancelEdit()" [disabled]="saving">Cancelar</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #emptyState>
+      <div class="empty-state">
+        <h4>Sin resultados</h4>
+        <p class="muted">No hay pacientes o no coinciden con los filtros actuales.</p>
+      </div>
+    </ng-template>
+
+    <!-- Paginación -->
+    <div class="pagination" *ngIf="filteredPatients().length > 0">
+      <button class="btn" (click)="goToPage(1)" [disabled]="page === 1">« Primero</button>
+      <button class="btn" (click)="goToPage(page - 1)" [disabled]="page === 1">‹ Anterior</button>
+
+      <span class="page-info">
+        Página <strong>{{ page }}</strong> de <strong>{{ totalPages() }}</strong>
+        · {{ filteredPatients().length }} resultado(s)
+      </span>
+
+      <button class="btn" (click)="goToPage(page + 1)" [disabled]="page === totalPages()">Siguiente ›</button>
+      <button class="btn" (click)="goToPage(totalPages())" [disabled]="page === totalPages()">Último »</button>
+    </div>
+  </section>
+</div>

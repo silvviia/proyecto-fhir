@@ -1,0 +1,58 @@
+<div class="hospital-page">
+  <section class="card page-header">
+    <div>
+      <p class="eyebrow">Herramienta técnica</p>
+      <h2>FHIR Viewer</h2>
+      <p class="muted">Explora recursos FHIR en JSON</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" (click)="back()" [disabled]="historyIndex <= 0">← Atrás</button>
+      <button class="btn" (click)="forward()" [disabled]="historyIndex >= history.length - 1">Adelante →</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="grid grid-4">
+      <label>
+        Recurso
+        <select [(ngModel)]="resourceType">
+          <option>Patient</option>
+          <option>Observation</option>
+          <option>Encounter</option>
+          <option>Condition</option>
+          <option>MedicationRequest</option>
+          <option>DiagnosticReport</option>
+          <option>Organization</option>
+          <option>Practitioner</option>
+        </select>
+      </label>
+
+      <label>
+        ID (opcional)
+        <input [(ngModel)]="resourceId" placeholder="Ej: 123" />
+      </label>
+
+      <label style="grid-column: span 2;">
+        Query (si no hay ID)
+        <input [(ngModel)]="query" placeholder="_count=20 o name=laura&_count=10" />
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" (click)="run()" [disabled]="loading">
+        {{ loading ? 'Consultando...' : 'Consultar' }}
+      </button>
+      <button class="btn" (click)="copyJson()" [disabled]="!prettyJson">Copiar JSON</button>
+      <button class="btn" (click)="downloadJson()" [disabled]="!prettyJson">Descargar JSON</button>
+    </div>
+
+    <div *ngIf="statusInfo" class="alert alert-success">{{ statusInfo }}</div>
+    <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+  </section>
+
+  <section class="card" *ngIf="prettyJson">
+    <h3>Resultado</h3>
+    <pre style="margin:0; overflow:auto; max-height: 65vh;"><code>{{ prettyJson }}</code></pre>
+  </section>
+</div>
