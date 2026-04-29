@@ -5,6 +5,7 @@ import { HomeComponent } from './pages/home.component';
 import { PatientsComponent } from './pages/patients.component';
 import { PatientDetailComponent } from './pages/patient-detail.component';
 import { FhirViewerComponent } from './pages/fhir-viewer.component';
+import { LogDashboardComponent } from './pages/log-dashboard.component';
 
 export const routes: Routes = [
   {
@@ -26,6 +27,13 @@ export const routes: Routes = [
     path: 'fhir',
     component: FhirViewerComponent,
     canActivate: [authGuard, roleGuard(['medico_general'])]
+  },
+
+  // NUEVO: Dashboard de logs
+  {
+    path: 'logs',
+    component: LogDashboardComponent,
+    //canActivate: [authGuard, roleGuard(['medico_general'])] // Agregar roles
   },
 
   // fallback
