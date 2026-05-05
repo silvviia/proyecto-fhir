@@ -5,7 +5,15 @@ export type LogLevel = 'INFO' | 'WARN' | 'ERROR';
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
+  /** Originating service layer – always "frontend" for Angular logs. */
+  service: string;
   message: string;
+  /** Human-readable description of what the user is doing (e.g. "GET /fhir/Patient"). */
+  action?: string;
+  /** Username extracted from the JWT (preferred_username / email / sub). */
+  user?: string;
+  /** Unique request identifier shared between frontend and backend logs. */
+  trace_id?: string;
   module?: string;
   url?: string;
   details?: any;
@@ -47,6 +55,7 @@ export class LoggerService {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
+      service: 'frontend',
       message,
       module,
       ...extra

@@ -173,6 +173,117 @@ tags: angular_log AND level: ERROR
 tags: nginx_access AND (status_code >= 400)
 ```
 
+---
+
+## End-to-End Request Traceability
+
+Every HTTP request originating from the Angular frontend carries a `trace_id`
+(UUID v4) that flows through the entire pipeline:
+
+```
+Browser (Angular)
+  │  generates X-Trace-Id header
+  ▼
+Nginx (proxy)
+  │  forwards X-Trace-Id to HAPI FHIR, echoes it in the response header,
+  │  and logs it in the access log as trace=<id>
+  ▼
+HAPI FHIR :8080
+  │  receives X-Trace-Id from Nginx proxy header
+  ▼
+Logstash / Elasticsearch
+  │  both Angular JSON log and Nginx access log share the same trace_id
+  ▼
+Kibana Discover – filter by trace_id to see correlated events
+```
+
+### Fields present in every Angular log entry
+
+| Field          | Example value                           | Description                                   |
+|----------------|-----------------------------------------|-----------------------------------------------|
+| `timestamp`    | `2024-03-15T10:23:45.123Z`              | ISO-8601 log time                             |
+| `level`        | `INFO` / `ERROR`                        | Severity                                      |
+| `service.name` | `frontend`                              | Originating service layer (ECS field)         |
+| `action`       | `GET /fhir/Patient`                     | HTTP method + path                            |
+| `user`         | `john.doe`                              | Keycloak `preferred_username`                 |
+| `trace_id`     | `550e8400-e29b-41d4-a716-446655440000`  | UUID shared across all log events             |
+| `log_message`  | `HTTP Request`                          | Human-readable description (renamed by Logstash) |
+| `module`       | `HTTP`                                  | Angular module that emitted the log           |
+
+### How to test traceability end-to-end
+
+1. Start the full stack:
+   ```bash
+   docker compose up -d
+   ```
+2. Open the Angular app at <http://localhost:4200> and log in via Keycloak.
+3. Perform any action that triggers an API call (e.g. open the **Patients** page).
+4. Open your browser's DevTools **Network** tab and note the `X-Trace-Id` header
+   on any `/fhir/*` request.  Copy the UUID.
+5. Open Kibana at <http://localhost:5601> → **Analytics → Discover**.
+6. Select the `fhir-logs-*` data view.
+7. Paste the UUID into the KQL search bar:
+
+   ```
+   trace_id: "550e8400-e29b-41d4-a716-446655440000"
+   ```
+
+   You should see **at least two events** with the same `trace_id`:
+   - An Angular frontend log (`tags: angular_http_log`, `service.name: frontend`)
+   - An Nginx access log (`tags: nginx_access`, `service.name: nginx`)
+
+### KQL queries for Kibana
+
+#### All logs for a specific trace
+
+```
+trace_id: "<your-uuid-here>"
+```
+
+#### Frontend errors for a specific user
+
+```
+service.name: "frontend" AND level: ERROR AND user: "john.doe"
+```
+
+#### Backend (Nginx) 4xx/5xx for a trace
+
+```
+trace_id: "<your-uuid-here>" AND status_code >= 400
+```
+
+#### All frontend INFO logs today
+
+```
+service.name: "frontend" AND level: INFO
+```
+
+#### All ERROR logs (any service)
+
+```
+level: ERROR
+```
+
+or via the tag:
+
+```
+tags: error
+```
+
+#### Requests that took longer than 500 ms
+
+```
+duration > 500
+```
+
+#### Correlate frontend + Nginx events for a user
+
+```
+user: "john.doe" OR (tags: nginx_access AND trace_id: *)
+```
+
+---
+
 ### Suggested Dashboard panels
 
 Create a **Dashboard** (Analytics → Dashboards → Create dashboard) and add:
