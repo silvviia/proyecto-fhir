@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { FhirService, FhirCapabilityStatement, FhirBundle } from '../services/fhir.service';
 
+
 type StatCard = {
   label: string;
   value: number;

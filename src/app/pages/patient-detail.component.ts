@@ -49,6 +49,7 @@ type MedicationRequestResource = {
           <div class="card">
             <h3 class="mb-2">Datos generales</h3>
             <p><strong>Nombre:</strong> {{ patientName(patient) }}</p>
+            <p><strong>RUT:</strong> {{ patientRut(patient) }}</p>
             <p><strong>Género:</strong> {{ patient.gender || '-' }}</p>
             <p><strong>Nacimiento:</strong> {{ patient.birthDate || '-' }}</p>
             <p>
@@ -60,11 +61,18 @@ type MedicationRequestResource = {
           </div>
 
           <div class="card">
-            <h3 class="mb-2">Acciones rápidas</h3>
-            <div class="flex gap-2 wrap">
-              <button class="btn" (click)="loadObservations()">Recargar Observations</button>
-              <button class="btn" (click)="loadMedicationRequests()">Recargar MedicationRequests</button>
-            </div>
+            <h3 class="mb-2">Contacto</h3>
+            <p><strong>Teléfono:</strong> {{ patientPhone(patient) }}</p>
+            <p><strong>Email:</strong> {{ patientEmail(patient) }}</p>
+            <p><strong>Dirección:</strong> {{ patientAddress(patient) }}</p>
+          </div>
+        </div>
+
+        <div *ngIf="patient && !loading" class="card mt-3">
+          <h3 class="mb-2">Acciones rápidas</h3>
+          <div class="flex gap-2 wrap">
+            <button class="btn" (click)="loadObservations()">Recargar Observations</button>
+            <button class="btn" (click)="loadMedicationRequests()">Recargar MedicationRequests</button>
           </div>
         </div>
       </div>
@@ -261,6 +269,31 @@ export class PatientDetailComponent implements OnInit {
     const given = n?.given?.join(' ') ?? '';
     const family = n?.family ?? '';
     return `${given} ${family}`.trim() || '(sin nombre)';
+  }
+
+  patientRut(p: PatientResource): string {
+    return p.identifier?.find((i) => i.system === 'urn:cl:run')?.value ?? '-';
+  }
+
+  patientPhone(p: PatientResource): string {
+    return p.telecom?.find((t) => t.system === 'phone')?.value ?? '-';
+  }
+
+  patientEmail(p: PatientResource): string {
+    return p.telecom?.find((t) => t.system === 'email')?.value ?? '-';
+  }
+
+  patientAddress(p: PatientResource): string {
+    const addr = p.address?.[0];
+    if (!addr) return '-';
+    const parts = [
+      addr.line?.[0],
+      addr.city,
+      addr.state,
+      addr.postalCode,
+      addr.country
+    ].filter(Boolean);
+    return parts.join(', ') || '-';
   }
 
   observationValue(o: ObservationResource): string {

@@ -1,10 +1,14 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import Keycloak, { KeycloakTokenParsed } from 'keycloak-js';
 import { keycloakConfig } from './keycloak.config';
+import { AuditService } from '../services/audit.service';
 
 type TokenClaims = KeycloakTokenParsed & {
   preferred_username?: string;
   realm_access?: { roles?: string[] };
+  email?: string;
+  name?: string;
+  sub?: string;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -12,6 +16,11 @@ export class AuthService {
   private keycloak!: Keycloak;
   private initialized = false;
   private initPromise: Promise<boolean> | null = null;
+
+  // Evita duplicar LOGIN_SUCCESS si init() se llama más de una vez
+  private loginLogged = false;
+
+  constructor(private injector: Injector) {}
 
   init(): Promise<boolean> {
     if (this.initPromise) return this.initPromise;
@@ -30,6 +39,14 @@ export class AuthService {
       })
       .then((authenticated) => {
         this.initialized = true;
+
+        // Log una sola vez cuando el usuario YA está autenticado
+        if (authenticated && !this.loginLogged) {
+          this.loginLogged = true;
+          const audit = this.injector.get(AuditService);
+          audit.loginSuccess();
+        }
+
         return authenticated;
       });
 
@@ -54,7 +71,13 @@ export class AuthService {
 
   getUsername(): string {
     const claims = this.keycloak?.tokenParsed as TokenClaims | undefined;
-    return claims?.preferred_username || '';
+    return (
+      claims?.preferred_username ||
+      claims?.email ||
+      claims?.name ||
+      claims?.sub ||
+      'anonymous'
+    );
   }
 
   getToken(): string {

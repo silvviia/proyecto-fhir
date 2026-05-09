@@ -20,6 +20,11 @@
 
     <div class="grid grid-4">
       <label>
+        RUT
+        <input [(ngModel)]="formRut" placeholder="Ej: 12.345.678-9" />
+      </label>
+
+      <label>
         Nombres
         <input [(ngModel)]="formGiven" placeholder="Ej: Juan Carlos" />
       </label>
@@ -44,12 +49,46 @@
         Fecha de nacimiento
         <input type="date" [(ngModel)]="formBirthDate" />
       </label>
-      
+
+      <label>
+        Teléfono
+        <input [(ngModel)]="formPhone" placeholder="+56 9 1234 5678" />
+      </label>
+
+      <label>
+        Email
+        <input [(ngModel)]="formEmail" placeholder="correo@dominio.cl" />
+      </label>
+
+      <label>
+        Dirección
+        <input [(ngModel)]="formAddressLine" placeholder="Calle #123" />
+      </label>
+
+      <label>
+        Comuna
+        <input [(ngModel)]="formCity" placeholder="Santiago" />
+      </label>
+
+      <label>
+        Región
+        <input [(ngModel)]="formState" placeholder="RM" />
+      </label>
+
+      <label>
+        Código Postal
+        <input [(ngModel)]="formPostalCode" placeholder="8320000" />
+      </label>
+
+      <label>
+        País
+        <input [(ngModel)]="formCountry" placeholder="Chile" />
+      </label>
+
       <label class="inline-check">
         <input type="checkbox" [(ngModel)]="showInactive" (ngModelChange)="goToPage(1)" />
         <span>Mostrar inactivos</span>
       </label>
-
     </div>
 
     <div class="form-actions">
@@ -147,6 +186,11 @@
 
                 <div class="grid grid-4">
                   <label>
+                    RUT
+                    <input [(ngModel)]="editRut" />
+                  </label>
+
+                  <label>
                     Nombres
                     <input [(ngModel)]="editGiven" />
                   </label>
@@ -170,6 +214,41 @@
                   <label>
                     Fecha de nacimiento
                     <input type="date" [(ngModel)]="editBirthDate" />
+                  </label>
+
+                  <label>
+                    Teléfono
+                    <input [(ngModel)]="editPhone" />
+                  </label>
+
+                  <label>
+                    Email
+                    <input [(ngModel)]="editEmail" />
+                  </label>
+
+                  <label>
+                    Dirección
+                    <input [(ngModel)]="editAddressLine" />
+                  </label>
+
+                  <label>
+                    Comuna
+                    <input [(ngModel)]="editCity" />
+                  </label>
+
+                  <label>
+                    Región
+                    <input [(ngModel)]="editState" />
+                  </label>
+
+                  <label>
+                    Código Postal
+                    <input [(ngModel)]="editPostalCode" />
+                  </label>
+
+                  <label>
+                    País
+                    <input [(ngModel)]="editCountry" />
                   </label>
                 </div>
 

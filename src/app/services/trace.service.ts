@@ -17,4 +17,15 @@ export class TraceService {
       return v.toString(16);
     });
   }
+
+  /** Stable trace id for the current browser session (tab). */
+  getSessionTraceId(): string {
+    const key = 'session_trace_id';
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+
+    const id = this.generate();
+    sessionStorage.setItem(key, id);
+    return id;
+  }
 }

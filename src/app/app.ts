@@ -1,11 +1,19 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet
+} from '@angular/router';
+import { filter } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AuthService } from './auth/auth.service';
+import { AuditService } from './services/audit.service';
 
 @Component({
   selector: 'app-root',
@@ -177,6 +185,8 @@ import { AuthService } from './auth/auth.service';
 })
 export class App implements OnInit {
   private auth = inject(AuthService);
+  private router = inject(Router);
+  private audit = inject(AuditService);
 
   darkMode = false;
   username = '';
@@ -187,8 +197,9 @@ export class App implements OnInit {
     this.darkMode = saved === 'dark';
     this.applyTheme();
 
-    // Evita bloquear/render loop si Keycloak ya se inicializa en guard o main.ts
-    this.auth.updateToken(30).catch(() => {});
+    // ✅ Asegura Keycloak inicializado antes de leer username
+    await this.auth.ensureInitialized();
+    await this.auth.updateToken(30).catch(() => {});
 
     this.username = this.auth.getUsername();
     const roles = this.auth.getUserRoles();
@@ -197,6 +208,14 @@ export class App implements OnInit {
     else if (roles.includes('enfermeros')) this.mainRole = 'enfermeros';
     else if (roles.includes('admin')) this.mainRole = 'admin';
     else this.mainRole = roles[0] || '';
+
+    this.audit.action('APP_READY', { mainRole: this.mainRole });
+
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e) => {
+        this.audit.navigate(e.urlAfterRedirects);
+      });
   }
 
   canSeeFhirViewer(): boolean {
@@ -213,6 +232,7 @@ export class App implements OnInit {
   }
 
   logout(): void {
+    this.audit.action('LOGOUT_CLICK');
     this.auth.logout();
   }
 }

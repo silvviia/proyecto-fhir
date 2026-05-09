@@ -32,17 +32,33 @@ export class PatientsComponent implements OnInit {
   private pendingCreated = new Map<string, PatientResource>();
 
   // Crear
+  formRut = '';
   formGiven = '';
   formFamily = '';
   formGender = '';
   formBirthDate = '';
+  formPhone = '';
+  formEmail = '';
+  formAddressLine = '';
+  formCity = '';
+  formState = '';
+  formPostalCode = '';
+  formCountry = 'Chile';
 
   // Editar inline
   editingId: string | null = null;
+  editRut = '';
   editGiven = '';
   editFamily = '';
   editGender = '';
   editBirthDate = '';
+  editPhone = '';
+  editEmail = '';
+  editAddressLine = '';
+  editCity = '';
+  editState = '';
+  editPostalCode = '';
+  editCountry = 'Chile';
 
   // Filtros + búsqueda
   searchTerm = '';
@@ -192,8 +208,13 @@ export class PatientsComponent implements OnInit {
   // Crear
   // -------------------------
   createPatient(): void {
-    if (!this.formGiven.trim() || !this.formFamily.trim()) {
-      this.error = 'Nombres y apellidos son obligatorios.';
+    if (
+      !this.formRut.trim() ||
+      !this.formGiven.trim() ||
+      !this.formFamily.trim() ||
+      !this.formBirthDate
+    ) {
+      this.error = 'RUT, nombres, apellidos y fecha de nacimiento son obligatorios.';
       this.success = '';
       return;
     }
@@ -201,9 +222,23 @@ export class PatientsComponent implements OnInit {
     const body: PatientResource = {
       resourceType: 'Patient',
       active: true,
-      name: [{ given: [this.formGiven.trim()], family: this.formFamily.trim() }],
+      identifier: [{ system: 'urn:cl:run', value: this.formRut.trim() }],
+      name: [{ use: 'official', given: [this.formGiven.trim()], family: this.formFamily.trim() }],
       gender: this.formGender || undefined,
-      birthDate: this.formBirthDate || undefined
+      birthDate: this.formBirthDate || undefined,
+      telecom: [
+        ...(this.formPhone ? [{ system: 'phone', value: this.formPhone.trim(), use: 'mobile' }] : []),
+        ...(this.formEmail ? [{ system: 'email', value: this.formEmail.trim(), use: 'home' }] : [])
+      ],
+      address: [
+        {
+          line: this.formAddressLine ? [this.formAddressLine.trim()] : [],
+          city: this.formCity || undefined,
+          state: this.formState || undefined,
+          postalCode: this.formPostalCode || undefined,
+          country: this.formCountry || undefined
+        }
+      ]
     };
 
     this.saving = true;
@@ -243,10 +278,18 @@ export class PatientsComponent implements OnInit {
   }
 
   resetCreateForm(): void {
+    this.formRut = '';
     this.formGiven = '';
     this.formFamily = '';
     this.formGender = '';
     this.formBirthDate = '';
+    this.formPhone = '';
+    this.formEmail = '';
+    this.formAddressLine = '';
+    this.formCity = '';
+    this.formState = '';
+    this.formPostalCode = '';
+    this.formCountry = 'Chile';
   }
 
   // -------------------------
@@ -290,16 +333,40 @@ export class PatientsComponent implements OnInit {
     this.editFamily = n?.family ?? '';
     this.editGender = p.gender ?? '';
     this.editBirthDate = p.birthDate ?? '';
+
+    const idRut = p.identifier?.find(i => i.system === 'urn:cl:run')?.value ?? '';
+    this.editRut = idRut;
+
+    const phone = p.telecom?.find(t => t.system === 'phone')?.value ?? '';
+    const email = p.telecom?.find(t => t.system === 'email')?.value ?? '';
+    this.editPhone = phone;
+    this.editEmail = email;
+
+    const addr = p.address?.[0];
+    this.editAddressLine = addr?.line?.[0] ?? '';
+    this.editCity = addr?.city ?? '';
+    this.editState = addr?.state ?? '';
+    this.editPostalCode = addr?.postalCode ?? '';
+    this.editCountry = addr?.country ?? 'Chile';
+
     this.error = '';
     this.success = '';
   }
 
   cancelEdit(): void {
     this.editingId = null;
+    this.editRut = '';
     this.editGiven = '';
     this.editFamily = '';
     this.editGender = '';
     this.editBirthDate = '';
+    this.editPhone = '';
+    this.editEmail = '';
+    this.editAddressLine = '';
+    this.editCity = '';
+    this.editState = '';
+    this.editPostalCode = '';
+    this.editCountry = 'Chile';
   }
 
   saveEdit(): void {
@@ -311,9 +378,23 @@ export class PatientsComponent implements OnInit {
       resourceType: 'Patient',
       id: this.editingId,
       active: previous?.active ?? true, // no forzar siempre true
-      name: [{ given: [this.editGiven.trim()], family: this.editFamily.trim() }],
+      identifier: [{ system: 'urn:cl:run', value: this.editRut.trim() }],
+      name: [{ use: 'official', given: [this.editGiven.trim()], family: this.editFamily.trim() }],
       gender: this.editGender || undefined,
-      birthDate: this.editBirthDate || undefined
+      birthDate: this.editBirthDate || undefined,
+      telecom: [
+        ...(this.editPhone ? [{ system: 'phone', value: this.editPhone.trim(), use: 'mobile' }] : []),
+        ...(this.editEmail ? [{ system: 'email', value: this.editEmail.trim(), use: 'home' }] : [])
+      ],
+      address: [
+        {
+          line: this.editAddressLine ? [this.editAddressLine.trim()] : [],
+          city: this.editCity || undefined,
+          state: this.editState || undefined,
+          postalCode: this.editPostalCode || undefined,
+          country: this.editCountry || undefined
+        }
+      ]
     };
 
     this.saving = true;

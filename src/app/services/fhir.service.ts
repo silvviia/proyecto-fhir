@@ -24,16 +24,50 @@ export interface FhirCapabilityStatement {
   format?: string[];
 }
 
+// ✅ Tipos auxiliares FHIR
+export interface FhirIdentifier {
+  system?: string;
+  value?: string;
+  type?: {
+    text?: string;
+    coding?: Array<{
+      system?: string;
+      code?: string;
+      display?: string;
+    }>;
+  };
+}
+
+export interface FhirHumanName {
+  use?: 'usual' | 'official' | 'temp' | 'nickname' | 'anonymous' | 'old' | 'maiden' | string;
+  family?: string;
+  given?: string[];
+}
+
+export interface FhirTelecom {
+  system?: 'phone' | 'fax' | 'email' | 'pager' | 'url' | 'sms' | 'other' | string;
+  value?: string;
+  use?: 'home' | 'work' | 'temp' | 'old' | 'mobile' | string;
+}
+
+export interface FhirAddress {
+  line?: string[];
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 export interface PatientResource {
   resourceType: 'Patient';
   id?: string;
   active?: boolean;
-  gender?: string;
+  identifier?: FhirIdentifier[];
+  name?: FhirHumanName[];
+  gender?: 'male' | 'female' | 'other' | 'unknown' | string;
   birthDate?: string;
-  name?: Array<{
-    family?: string;
-    given?: string[];
-  }>;
+  telecom?: FhirTelecom[];
+  address?: FhirAddress[];
 }
 
 export interface FhirCreateResponse {
@@ -48,7 +82,7 @@ export class FhirService {
   private auth = inject(AuthService);
   private logger = inject(LoggerService);
 
-  private baseUrl = 'http://localhost:8080/fhir';
+  private baseUrl = '/fhir';
 
   private authHeaders(): HttpHeaders {
     const token = this.auth.getToken();

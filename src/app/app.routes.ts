@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { roleGuard } from './auth/role.guard';
+
 import { HomeComponent } from './pages/home.component';
 import { PatientsComponent } from './pages/patients.component';
 import { PatientDetailComponent } from './pages/patient-detail.component';
@@ -28,14 +29,12 @@ export const routes: Routes = [
     component: FhirViewerComponent,
     canActivate: [authGuard, roleGuard(['medico_general'])]
   },
-
   // NUEVO: Dashboard de logs
   {
     path: 'logs',
     component: LogDashboardComponent,
-    //canActivate: [authGuard, roleGuard(['medico_general'])] // Agregar roles
+    //canActivate: [authGuard, roleGuard(['medico_general'])]
   },
-
   // fallback
   { path: '**', redirectTo: '' }
 ];
